@@ -143,3 +143,56 @@ def resolveExp(expressao):
             else:
                 print(f"\tErro: Operador untario desconhecido '{token}'", file=sys.stderr)
                 resultadoOp = np.nan
+            
+            if np.isnan(resultadoOp): return np.nan
+            pilha.empilhar(resultadoOp)
+            resultHalf.append(convertFloatToHalf(resultadoOp))
+        else:
+            try:
+                num = float(token)
+                pilha.empilhar(num)
+                resultHalf.append(convertFloatToHalf(num))
+            except ValueError:
+                print(f"\tErro: Token invalido '{token}'.",file=sys.stderr)
+                return np.nan
+        idx += 1
+
+    if pilha.tamanho() == 1:
+        resultadoFinal = pilha.desempilhar()
+        if resultadoFinal is None or np.isnan(resultadoFinal):
+            print("\tErro: Calculo resultou em None ou NaN.", file=sys.stderr)
+            return np.nan
+        return resultadoFinal
+    elif pilha.vazia():
+        print("\tAviso: Pilha final vazia. Retornando 0.0", file=sys.stderr)
+        return 0.0
+    else:
+        print(f"\tErro: Expressão mal formada, sobraram {pilha.tamanho()} itens.", file=sys.stderr)
+        return np.nan
+    
+def lerArquivo(nomeArquivos):
+    global resultadosHalf
+    for nomeArquivo in nomeArquivos:
+        try:
+            with open(nomeArquivo, 'r') as arquivo:
+                print(f"--- Resultados do arquivo {nomeArquivo}: ---")
+                for linha in arquivo:
+                    expressaoOriginal = linha.strip()
+                    if not expressaoOriginal: continue
+
+                    resultadosHalf.clear()
+
+                    resultado = resolveExp(expressaoOriginal)
+                    if np.isnan(resultado):
+                        print(f"Expressao: {expressaoOriginal} = ERRO")
+                    else:
+                        print(f"Expressao: {expressaoOriginal} = {resultado: .0f}")
+                print("-" * (len(nomeArquivo) + 26))
+                print("")
+        except FileExistsError:
+            print(f"Erro ao abrir o arquivo {nomeArquivo}.", file=sys.stderr)
+        except Exception as e:
+            print(f"Erro inesperado ao processar o arquivo {nomeArquivo}: {e}", file=sys.stderr)
+
+if __name__ == "__main__":
+    # Parte da execução do código Python
