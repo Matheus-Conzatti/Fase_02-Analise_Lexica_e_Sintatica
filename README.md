@@ -1,5 +1,6 @@
 # Projeto Fase 01 - Análise Léxica e Sintática
-    - Inicio da Atividade Somativa 02 em 21/04/2025.
+
+- Inicio da Atividade Somativa 02 em 21/04/2025.
 
 # Autor
 
