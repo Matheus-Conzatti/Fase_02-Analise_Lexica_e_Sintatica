@@ -21,10 +21,10 @@ class Stack:
     def __init__(self):
         self.items = []
 
-    def empilhar(self, item):
+    def push(self, item):
         self._items.append(item)
     
-    def desempilhar(self):
+    def pop(self):
         if not self.vazia():
             return self._items.pop()
         else:
@@ -73,13 +73,13 @@ def operacao(a, b, op):
     
 def resolveExp(expressao):
     global memory, resultHalf
-    pilha = Stack()
 
+    pilha = Stack()
     tokens = list(expressao.split())
     operadoresBinarios = "+-/*^%"
     operadoresUnitarios = "&"
-
     idx = 0
+
     while idx < len(tokens):
         token = tokens[idx]
 
@@ -91,7 +91,7 @@ def resolveExp(expressao):
                     n = int(nStr)
                     if 0 <= n < len(resultHalf):
                         valorRes = convertHalfToFloat(resultHalf[n])
-                        pilha.empilhar(valorRes)
+                        pilha.push(valorRes)
                     else:
                         print(f"\tErro: Resultado N={n} não encontrado.", file=sys.stderr)
                 except ValueError:
@@ -100,7 +100,7 @@ def resolveExp(expressao):
                     print(f"\tErro processando comando RES '{comando}': {e}", file=sys.stderr)
             elif comando == "MEM":
                 valorMem = convertHalfToFloat(memory)
-                pilha.empilhar(valorMem)
+                pilha.push(valorMem)
             elif comando.startswith("V MEM"):
                 try:
                     vStr = comando[6:]
@@ -116,19 +116,19 @@ def resolveExp(expressao):
             if pilha.tamanho() < 2:
                 print(f"\tErro: Pilha nao contem elementos suficientes para a operacao '{token}'!", file=sys.stderr)
                 return np.nan
-            n1 = pilha.desempilhar()
-            n2 = pilha.desempilhar()
+            n1 = pilha.pop()
+            n2 = pilha.pop()
             if n1 is None or n2 is None: return np.nan
 
             resultadoOp = operacao(n2, n1, token)
             if np.isnan(resultadoOp): return np.nan
-            pilha.empilhar(resultadoOp)
+            pilha.push(resultadoOp)
             resultHalf.append(convertFloatToHalf(resultadoOp))
         elif token in operadoresUnitarios:
             if pilha.vazia():
                 print(f"\tErro: Pilha nao contem elementos suficientes para a operacao '{token}!'", file=sys.stderr)
                 return np.nan
-            n1 = pilha.desempilhar()
+            n1 = pilha.pop()
             if n1 is None: return np.nan
 
             if token == '&':
@@ -145,12 +145,12 @@ def resolveExp(expressao):
                 resultadoOp = np.nan
             
             if np.isnan(resultadoOp): return np.nan
-            pilha.empilhar(resultadoOp)
+            pilha.push(resultadoOp)
             resultHalf.append(convertFloatToHalf(resultadoOp))
         else:
             try:
                 num = float(token)
-                pilha.empilhar(num)
+                pilha.push(num)
                 resultHalf.append(convertFloatToHalf(num))
             except ValueError:
                 print(f"\tErro: Token invalido '{token}'.",file=sys.stderr)
@@ -158,7 +158,7 @@ def resolveExp(expressao):
         idx += 1
 
     if pilha.tamanho() == 1:
-        resultadoFinal = pilha.desempilhar()
+        resultadoFinal = pilha.pop()
         if resultadoFinal is None or np.isnan(resultadoFinal):
             print("\tErro: Calculo resultou em None ou NaN.", file=sys.stderr)
             return np.nan
