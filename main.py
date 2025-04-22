@@ -73,7 +73,6 @@ class calculatorRPN:
             print(f"\tErro durante operação '{op}': {e}", file=sys.stderr)
             return np.nan
 
-    @staticmethod
     def resolveExp(expressao):
         global memory, resultHalf
 
@@ -173,7 +172,6 @@ class calculatorRPN:
             print(f"\tErro: Expressão mal formada, sobraram {calculator.tamanho()} itens.", file=sys.stderr)
             return np.nan
 
-    @staticmethod
     def lerArquivo(nomeArquivos):
         global resultHalf
         for nomeArquivo in nomeArquivos:
