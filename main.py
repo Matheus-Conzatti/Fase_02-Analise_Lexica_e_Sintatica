@@ -32,7 +32,7 @@ class RPNCalculator:
         # Memória para comando (V MEM)
         self.memory = 0.0
     
-    def to_half_precision(self, value):
+    def convertFloatToHalf(f):
         """
         Converte um número para formato de meia precisão (16 bits) conforme padrão IEEE754.
         
@@ -42,25 +42,46 @@ class RPNCalculator:
         Retorna:
             Valor convertido para representação de meia precisão (16 bits)
         """
-        # Se o valor for inteiro para divisão inteira e resto, não converte
-        if isinstance(value, int):
-            return value
+        # Coverte o float para bits (uint32)
+        bin_f = struct.unpack('>I', struct.pack('>f', f))[0]
+
+        sinal = (bin_f >> 16) & 0x8000
+        exp = ((bin_f >> 23) & 0xFF) - 127 +15
+        mantissa = (bin_f >> 13) & 0x03FF
+
+        if exp <= 0:
+            return sinal # Subnormal ou zero
+        elif exp >= 31:
+            return sinal | 0x7C00 # Ifinito ou NaN
+        return sinal | (exp << 10) | mantissa
+    
+    def convertHalfToFloat(f16):
+        sinal = (f16 >> 15) & 0x1
+        exp = (f16 >> 10) & 0x1F
+        frac = f16 & 0x03FF
+        f32Sinal = sinal << 31
+
+        if exp == 0:
+            if frac == 0:
+                f32Sinal = 0
+                f32Frac = 0
+            else:
+                exp = 1
+                while (frac & 0x0400) == 0:
+                    frac <<= 1
+                    exp -= 1
+                frac &= 0x03FF
+                f32Exp = (127 - 15 + exp) << 23
+                f32Frac = frac << 13
+        elif exp == 0x1F:
+            f32Exp = 0xFF << 23
+            f32Frac = frac << 13
+        else:
+            f32Exp = (exp + (127 - 15)) << 23
+            f32Frac = frac << 13
         
-        # Para valores reais, converte para half-precision (IEEE754)
-        try:
-            # Conversão para float32 e depois para float16
-            binary = struct.pack('!f', float(value))
-            float32 = struct.unpack('!f', binary)[0]
-            # Simulação da conversão para float16
-            # Na prática, isso é uma simplificação, pois Python não tem float16 nativo
-            # Um método mais preciso seria implementar a conversão conforme o padrão IEEE754
-            if float32 > 65504.0:  # Valor máximo para float16
-                return 65504.0
-            elif float32 < -65504.0:  # Valor mínimo para float16
-                return -65504.0
-            return float32
-        except:
-            return 0.0
+        f32Bits = f32Sinal | f32Exp | f32Frac
+        return struct.unpack('>f', struct.pack('>I', f32Bits))[0]
 
     def evaluate_expression(self, expression):
         """
