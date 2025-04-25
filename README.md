@@ -1,11 +1,14 @@
-# Explicações do Projeto:
+# Projeto Fase 02 - Análise Léxica e Sintática:
 
-# Projeto Fase 01 - Análise Léxica e Sintática:
+## Explicações do projeto:
+
+
+## Data de :
 
 - Inicio da Atividade Somativa 02 em 21/04/2025.
 - Termino da Atividade Somativa 02 em ../../..
 
-# Autores:
+## Autores:
 
 | [<img loading="lazy" src="https://avatars.githubusercontent.com/u/87741591?v=4" width=115><br><sub>Andre Ruan Cesar Dal Negro</sub>](https://github.com/wnexous) |  
 | :---: |
