@@ -1,20 +1,8 @@
-"""
-Trabalho de Compiladores - Calculadora RPN
-Fase 1: Implementação de uma calculadora de expressões aritméticas em notação RPN
-
-Integrantes do grupo:
-- Andre Ruan Cesar Dal Negro
-- Felipe Abdullah
-- Luiz Augusto Signorelli Toledo
-- Matheus Conzatti De Souza
-
-Nome do grupo no Canvas: RA1 10
-"""
-
 import sys
 import re
 import struct
 import math
+import os
 
 class RPNCalculator:
     """
@@ -32,7 +20,7 @@ class RPNCalculator:
         # Memória para comando (V MEM)
         self.memory = 0.0
     
-    def convertFloatToHalf(f):
+    def convertFloatToHalf(self, f):
         """
         Converte um número para formato de meia precisão (16 bits) conforme padrão IEEE754.
         
@@ -42,20 +30,20 @@ class RPNCalculator:
         Retorna:
             Valor convertido para representação de meia precisão (16 bits)
         """
-        # Coverte o float para bits (uint32)
+        # Converte o float para bits (uint32)
         bin_f = struct.unpack('>I', struct.pack('>f', f))[0]
 
         sinal = (bin_f >> 16) & 0x8000
-        exp = ((bin_f >> 23) & 0xFF) - 127 +15
+        exp = ((bin_f >> 23) & 0xFF) - 127 + 15
         mantissa = (bin_f >> 13) & 0x03FF
 
         if exp <= 0:
             return sinal # Subnormal ou zero
         elif exp >= 31:
-            return sinal | 0x7C00 # Ifinito ou NaN
+            return sinal | 0x7C00 # Infinito ou NaN
         return sinal | (exp << 10) | mantissa
     
-    def convertHalfToFloat(f16):
+    def convertHalfToFloat(self, f16):
         sinal = (f16 >> 15) & 0x1
         exp = (f16 >> 10) & 0x1F
         frac = f16 & 0x03FF
@@ -99,31 +87,23 @@ class RPNCalculator:
             Resultado da avaliação da expressão
         """
         try:
-            # Verifica se é o comando (N RES)
             res_match = re.match(r'^\(\s*(\d+)\s+RES\s*\)$', expression.strip())
             if res_match:
                 n = int(res_match.group(1))
                 if n < len(self.results):
-                    return self.results[-(n+1)]
+                    return self.convertFloatToHalf(self.results[-(n+1)])
                 else:
-                    raise ValueError(f"Erro: Não há {n} resultados anteriores.")
+                    raise ValueError(f"Erro: Não já {n} resultados anteriores.")
             
-            # Verifica se é o comando (V MEM)
             mem_store_match = re.match(r'^\(\s*([0-9.+-]+)\s+MEM\s*\)$', expression.strip())
             if mem_store_match:
-                value = float(mem_store_match.group(1))
-                self.memory = self.to_half_precision(value)
-                return self.memory
+                value = float(mem_store_match(1))
+                self.memory = self.convertFloatToHalf(self.memory)
             
-            # Verifica se é o comando (MEM)
-            if re.match(r'^\(\s*MEM\s*\)$', expression.strip()):
-                return self.memory
-            
-            # Processamento normal da expressão RPN
             return self.evaluate_tokens(self.tokenize_expression(expression))
         except Exception as e:
             print(f"Erro ao avaliar expressão '{expression}': {str(e)}")
-            return 0.0
+
     
     def evaluate_tokens(self, tokens):
         """
@@ -137,195 +117,145 @@ class RPNCalculator:
         Retorna:
             Resultado da avaliação dos tokens
         """
-        # Pilha para armazenar os operandos durante a avaliação
         stack = []
-        
-        # Índice para percorrer a lista de tokens
         i = 0
         while i < len(tokens):
             token = tokens[i]
-            
             if token == '(':
-                # CASO 1: INÍCIO DE SUB-EXPRESSÃO
-                # Quando encontramos um parêntese de abertura, precisamos localizar
-                # o parêntese de fechamento correspondente e processar o conteúdo entre eles
-                
-                # Contador para controlar o aninhamento de parênteses
                 j = i + 1
-                count = 1  # Começamos com 1 parêntese aberto
-                
-                # Busca o parêntese de fechamento correspondente
+                count = 1
                 while j < len(tokens) and count > 0:
                     if tokens[j] == '(':
-                        count += 1  # Encontrou outro parêntese de abertura, incrementa o contador
+                        count += 1
                     elif tokens[j] == ')':
-                        count -= 1  # Encontrou um parêntese de fechamento, decrementa o contador
+                        count -= 1
                     j += 1
-                
-                # Verifica se os parênteses estão balanceados
                 if count != 0:
                     raise ValueError("Erro: Parênteses não balanceados.")
-                
-                # Extrai a sub-expressão entre os parênteses (excluindo os parênteses)
                 subexpr = tokens[i+1:j-1]
-                
-                # PROCESSAMENTO DE COMANDOS ESPECIAIS E SUB-EXPRESSÕES
-                
+
                 if len(subexpr) == 2 and subexpr[1] == 'RES':
-                    # CASO 1.1: COMANDO (N RES)
-                    # Recupera o resultado de N linhas anteriores
                     n = int(subexpr[0])
                     if n < len(self.results):
-                        # Acessa o resultado N posições para trás no histórico (-1 para índice 0)
                         stack.append(self.results[-(n+1)])
                     else:
                         raise ValueError(f"Erro: Não há {n} resultados anteriores.")
                 elif len(subexpr) == 2 and subexpr[1] == 'MEM':
-                    # CASO 1.2: COMANDO (V MEM)
-                    # Armazena um valor na memória
                     value = float(subexpr[0])
-                    # Converte para meia precisão antes de armazenar
-                    self.memory = self.to_half_precision(value)
-                    # Empilha o valor armazenado para continuar o cálculo
+                    self.memory = self.convertFloatToHalf(value)
                     stack.append(self.memory)
                 elif len(subexpr) == 1 and subexpr[0] == 'MEM':
-                    # CASO 1.3: COMANDO (MEM)
-                    # Recupera o valor armazenado na memória
                     stack.append(self.memory)
                 else:
-                    # CASO 1.4: SUB-EXPRESSÃO NORMAL
-                    # Avalia recursivamente a sub-expressão e empilha o resultado
                     result = self.evaluate_tokens(subexpr)
-                    stack.append(result)
-                
-                # Avança o índice para depois do parêntese de fechamento
+                    stack.append(self.convertFloatToHalf(result))
                 i = j
             elif token == ')':
-                # CASO 2: FIM DE SUB-EXPRESSÃO
-                # Parênteses de fechamento são tratados implicitamente no 'CASO 1'
                 i += 1
             elif token in ['+', '-', '*', '|', '/', '%', '^']:
-                # CASO 3: OPERADORES
-                # Todos os operadores requerem exatamente dois operandos
                 if len(stack) < 2:
                     raise ValueError(f"Erro: Operador {token} requer dois operandos.")
-                
-                # Remove os dois operandos do topo da pilha (ordem é importante!)
-                b = stack.pop()  # Segundo operando (topo da pilha)
-                a = stack.pop()  # Primeiro operando (abaixo do topo)
-                
-                # Aplica o operador aos operandos e empilha o resultado
+                b = self.convertHalfToFloat(stack.pop())
+                a = self.convertHalfToFloat(stack.pop())
                 result = self.operate(a, b, token)
-                stack.append(result)
+                stack.append(self.convertFloatToHalf(result))
                 i += 1
             else:
-                # CASO 4: OPERANDOS (NÚMEROS)
-                # Tenta converter o token para um número de ponto flutuante
                 try:
                     num = float(token)
-                    # Converte para meia precisão antes de empilhar
-                    stack.append(self.to_half_precision(num))
+                    stack.append(self.convertFloatToHalf(num))
                 except ValueError:
-                    # Se não for possível converter para float, o token é inválido
-                    raise ValueError(f"Token inválido: {token}")
+                    raise(f"Erro: Token 'token' não é válido.")
                 i += 1
-        
-        # VALIDAÇÃO FINAL
-        # Ao final da avaliação, a pilha deve conter exatamente um valor (o resultado final)
-        if len(stack) != 1:
-            raise ValueError("Erro: Expressão inválida ou incompleta.")
-        
-        # Retorna o único valor na pilha, que é o resultado da expressão
-        return stack[0]
-    
-    def tokenize_expression(self, expression):
-        """
-        Converte uma string de expressão RPN em uma lista de tokens.
-        Separa parênteses, operadores e operandos para processamento.
-        
-        Parâmetros:
-            expression: String contendo a expressão RPN
             
-        Retorna:
-            Lista de tokens extraídos da expressão
-        """
-        # Substitui ( e ) por " ( " e " ) " para facilitar o split
-        expression = expression.replace('(', ' ( ').replace(')', ' ) ')
-        # Remove espaços extras e divide os tokens
-        tokens = [token for token in expression.split() if token]
-        return tokens
-    
+        if len(stack) != 1:
+            raise ValueError(f"Erro: A pilha tem {len(stack)} elementos após a avaliação.")
+        return self.convertHalfToFloat(stack.pop())
+
     def operate(self, a, b, operator):
         """
-        Realiza a operação especificada entre dois operandos.
-        Suporta +, -, *, |, /, %, ^ com tratamento adequado para cada tipo.
+        Realiza a operação matemática entre dois operandos a e b com o operador fornecido.
         
         Parâmetros:
-            a: Primeiro operando
-            b: Segundo operando
-            operator: Operador a ser aplicado
+            a: Primeiro operando (float)
+            b: Segundo operando (float)
+            operator: Operador (string)
             
         Retorna:
-            Resultado da operação entre a e b
+            Resultado da operação
         """
         if operator == '+':
-            return self.to_half_precision(a + b)
+            return a + b
         elif operator == '-':
-            return self.to_half_precision(a - b)
+            return a - b
         elif operator == '*':
-            return self.to_half_precision(a * b)
-        elif operator == '|':
-            if b == 0:
-                raise ValueError("Erro: Divisão por zero.")
-            return self.to_half_precision(a / b)  # Divisão real
+            return a * b
         elif operator == '/':
             if b == 0:
                 raise ValueError("Erro: Divisão por zero.")
-            return int(a) // int(b)  # Divisão de inteiros
+            return a / b
         elif operator == '%':
-            if b == 0:
-                raise ValueError("Erro: Divisão por zero.")
-            return int(a) % int(b)  # Resto da divisão de inteiros
+            return a % b
         elif operator == '^':
-            if not float(b).is_integer() or b < 0:
-                raise ValueError("Erro: Expoente deve ser um inteiro positivo.")
-            return self.to_half_precision(a ** b)  # Potenciação
+            return math.pow(a, b)
+        elif operator == '|':
+            return max(a, b)
         else:
-            raise ValueError(f"Operador desconhecido: {operator}")
+            raise ValueError(f"Erro: Operador '{operator}' inválido.")
     
-    def process_file(self, filename):
+    def tokenize_expression(self, expression):
         """
-        Processa um arquivo contendo expressões RPN (uma por linha).
-        Avalia cada expressão e armazena o resultado.
+        Tokeniza a expressão RPN, dividindo-a em seus componentes (operadores, operandos, comandos especiais).
         
         Parâmetros:
-            filename: Caminho do arquivo a ser processado
+            expression: Expressão RPN em formato de string
             
         Retorna:
-            Lista com os resultados de cada expressão no arquivo
+            Lista de tokens
+        """
+        # Limpeza da expressão
+        expression = expression.strip()
+        # Usa expressões regulares para dividir a expressão em tokens
+        return re.findall(r'\d+\.\d+|\d+|[()+\-*/^%|]', expression)
+    
+    def process_File(self, filename):
+        """
+            Processa um arquivo contendo expressões RPN (uma por linha).
+            Avalia cada expressão e armazena o resultado.
+            
+            Parâmetros:
+                filename: Caminho do arquivo a ser processado
+                
+            Retorna:
+                Lista com os resultados de cada expressão no arquivo
         """
         try:
-            with open(filename, 'r') as file: lines = file.readlines()
-            
             results = []
-            for i, line in enumerate(lines):
-                line = line.strip()
-                if line:
-                    print(f"Linha {i+1}: {line}")
-                    result = self.evaluate_expression(line)
-                    self.results.append(result)
-                    results.append(result)
-                    print(f"Resultado: {result}")
-                    print()
-            
+            for file in os.listdir(filename):
+                filepath = os.path.join(filename, file)
+                # Verifica se é um arquivo e termina com .txt
+                if os.path.isfile(filepath) and file.endswith('.txt'):
+                    print(f"---- Arquivo: {file} ---------\n")
+                    with open(filepath, 'r') as f:
+                        lines = f.readlines()
+                        
+                        for i, line in enumerate(lines):
+                            line = line.strip()
+                            if line:
+                                print(f"Expressão: {line}")
+                                result = self.evaluate_expression(line)
+                                self.results.append(result)
+                                results.append(result)
+                                print(f"Resultado: {result}")
+                                print()
             return results
         except FileNotFoundError:
-            print(f"Erro: Arquivo '{filename}' não encontrado.")
+            print(f"Erro: Diretório '{filename}' não encontrado.")
             return []
         except Exception as e:
-            print(f"Erro ao processar arquivo: {str(e)}")
+            print(f"Erro ao processar diretório: {str(e)}")
             return []
-    
+        
     def generate_arduino_assembly(self, filename, output_filename="arduino_code.asm"):
         """
         Gera código Assembly para Arduino a partir do arquivo de expressões RPN.
@@ -390,22 +320,28 @@ class RPNCalculator:
                     assembly_code.append("    sub r16, r17  ; Subtrai")
                     assembly_code.append("    st X+, r16    ; Armazena resultado")
                 elif "*" in line:
-                    assembly_code.append("    ; Operação de multiplicação")
+                    assembly_code.append("    ; Operação de Multiplicação")
                     assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
                     assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    mult r16, r17  ; Multiplicacao")
+                    assembly_code.append("    mult r16, r17  ; Mult")
                     assembly_code.append("    st X+, r16    ; Armazena resultado")
                 elif "/" in line:
-                    assembly_code.append("    ; Operação de divisão")
+                    assembly_code.append("    ; Operação de Divisão")
                     assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
                     assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    div r16, r17  ; Divisão")
+                    assembly_code.append("    div r16, r17  ; div")
                     assembly_code.append("    st X+, r16    ; Armazena resultado")
                 elif "^" in line:
-                    assembly_code.append("    ; Operação de potência")
+                    assembly_code.append("    ; Operação de Pontência")
                     assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
                     assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    pow r16, r17  ; Potência")
+                    assembly_code.append("    pow r16, r17  ; pow")
+                    assembly_code.append("    st X+, r16    ; Armazena resultado")
+                elif "%" in line:
+                    assembly_code.append("    ; Operação de Resto da Divisão")
+                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
+                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
+                    assembly_code.append("    mod r16, r17  ; mod")
                     assembly_code.append("    st X+, r16    ; Armazena resultado")
                 
             # Fim do programa
@@ -422,31 +358,22 @@ class RPNCalculator:
         except Exception as e:
             print(f"Erro ao gerar código Assembly: {str(e)}")
             return False
-
+        
 def main():
     """
-    Função principal que coordena a execução do programa.
-    Processa o arquivo de entrada especificado como argumento de linha de comando,
-    avalia as expressões e gera o código Assembly para Arduino.
+        Função principal que coordena a execução do programa.
+        Processa o arquivo de entrada especificado como argumento de linha de comando,
+        avalia as expressões e gera o código Assembly para Arduino.
     """
-    # Verifica se foi fornecido um arquivo de entrada
-    if len(sys.argv) < 2:
-        print("Uso: python3 main.py <arquivo_de_entrada>")
-        sys.exit(1)
-    
-    # Nome do arquivo de entrada
-    input_file = sys.argv[1]
-    
-    # Cria uma instância da calculadora
     calculator = RPNCalculator()
-    
-    # Processa o arquivo de entrada
-    print(f"Processando arquivo: {input_file}")
-    calculator.process_file(input_file)
-    
-    # Gera o código assembly para Arduino
-    calculator.generate_arduino_assembly(input_file)
 
+    if len(sys.argv) > 1:
+        folder = sys.argv[1]
+        calculator.process_File(folder)
+    else:
+         print("Uso: python3 main.py <arquivo_de_entrada>")
 
+# Exemplo de uso:
 if __name__ == "__main__":
     main()
+
