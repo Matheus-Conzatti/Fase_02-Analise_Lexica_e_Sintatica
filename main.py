@@ -358,6 +358,31 @@ class RPNCalculator:
         except Exception as e:
             print(f"Erro ao gerar código Assembly: {str(e)}")
             return False
+
+    def lexical_analyzer(self, expression):
+        """
+            Analisador léxico - Transforma as expressões em tokens.
+            Retorna uma lista de dicionários contendo:
+            - 'value': valor do token
+            - 'type': tipo do token (NUMBER, OPERATOR, PAREN, COMMAND)
+            - 'position': posição inicial na expressão
+        """
+        tokens = []
+        i = 0
+        n = len(expression)
+
+        while i < n:
+            if expression[i].isspace():
+                i += 1
+                continue
+
+            # Verifica os parênteses
+            if expression[i] in '()':
+                tokens.append({'value': expression[i], 'type': 'PAREN', 'position': i})
+                i += 1
+                continue
+            
+               
         
 def main():
     """
@@ -376,4 +401,3 @@ def main():
 # Exemplo de uso:
 if __name__ == "__main__":
     main()
-
