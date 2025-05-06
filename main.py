@@ -383,21 +383,13 @@ class RPNCalculator:
                 
             # Verifica parênteses
             if expression[i] in '()':
-                tokens.append({
-                    'value': expression[i],
-                    'type': 'PAREN',
-                    'position': i
-                })
+                tokens.append({'value': expression[i], 'type': 'PAREN', 'position': i})
                 i += 1
                 continue
                 
             # Verifica operadores
             if expression[i] in '+-*/%|^':
-                tokens.append({
-                    'value': expression[i],
-                    'type': 'OPERATOR',
-                    'position': i
-                })
+                tokens.append({'value': expression[i], 'type': 'OPERATOR', 'position': i})
                 i += 1
                 continue
                 
@@ -418,11 +410,7 @@ class RPNCalculator:
                 if expression[i-1] == '.':
                     raise ValueError(f"Número inválido na posição {start}")
                 
-                tokens.append({
-                    'value': expression[start:i],
-                    'type': 'NUMBER',
-                    'position': start
-                })
+                tokens.append({'value': expression[start:i],'type': 'NUMBER','position': start})
                 continue
                 
             # Verifica comandos (RES, MEM)
@@ -433,17 +421,11 @@ class RPNCalculator:
                 token_value = expression[start:i].upper()
                 
                 if token_value in ('RES', 'MEM'):
-                    tokens.append({
-                        'value': token_value,
-                        'type': 'COMMAND',
-                        'position': start
-                    })
+                    tokens.append({'value': token_value,'type': 'COMMAND','position': start})
                 else:
                     raise ValueError(f"Comando desconhecido '{token_value}' na posição {start}")
                 continue
-                
-            raise ValueError(f"Caractere inválido '{expression[i]}' na posição {i}")
-            
+            raise ValueError(f"Caractere inválido '{expression[i]}' na posição {i}") 
         return tokens
     
     def syntactic_analyzer(self, tokens):
@@ -465,55 +447,55 @@ class RPNCalculator:
                 raise ValueError(f"Esperado '{token_value}', encontrado '{tokens[i]['value']}' na posição {tokens[i]['position']}")
             i += 1
         
-        try:
-            while i < n:
-                if tokens[i]['value'] == '(':
-                    stack.append(tokens[i])
-                    expect('PAREN', '(')
-                    
-                    # Verifica se é um comando especial
-                    if i + 2 < n and tokens[i]['type'] == 'NUMBER' and tokens[i+1]['type'] == 'COMMAND':
-                        expect('NUMBER')
-                        expect('COMMAND')
+            try:
+                while i < n:
+                    if tokens[i]['value'] == '(':
+                        stack.append(tokens[i])
+                        expect('PAREN', '(')
+                        
+                        # Verifica se é um comando especial
+                        if i + 2 < n and tokens[i]['type'] == 'NUMBER' and tokens[i+1]['type'] == 'COMMAND':
+                            expect('NUMBER')
+                            expect('COMMAND')
+                            expect('PAREN', ')')
+                            stack.pop()
+                            continue
+                        elif i + 1 < n and tokens[i]['type'] == 'COMMAND' and tokens[i]['value'] == 'MEM':
+                            expect('COMMAND', 'MEM')
+                            expect('PAREN', ')')
+                            stack.pop()
+                            continue
+                        
+                        # Caso contrário, deve ser uma expressão normal
+                        # Primeiro operando (pode ser número ou subexpressão)
+                        if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
+                            if tokens[i]['value'] == '(':
+                                self.syntactic_analyzer(tokens[i:])
+                            else:
+                                expect('NUMBER')
+                        
+                        # Segundo operando
+                        if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
+                            if tokens[i]['value'] == '(':
+                                self.syntactic_analyzer(tokens[i:])
+                            else:
+                                expect('NUMBER')
+                        
+                        # Operador
+                        expect('OPERATOR')
+                        
+                        # Fechamento
                         expect('PAREN', ')')
                         stack.pop()
-                        continue
-                    elif i + 1 < n and tokens[i]['type'] == 'COMMAND' and tokens[i]['value'] == 'MEM':
-                        expect('COMMAND', 'MEM')
-                        expect('PAREN', ')')
-                        stack.pop()
-                        continue
-                    
-                    # Caso contrário, deve ser uma expressão normal
-                    # Primeiro operando (pode ser número ou subexpressão)
-                    if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
-                        if tokens[i]['value'] == '(':
-                            self.syntactic_analyzer(tokens[i:])
-                        else:
-                            expect('NUMBER')
-                    
-                    # Segundo operando
-                    if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
-                        if tokens[i]['value'] == '(':
-                            self.syntactic_analyzer(tokens[i:])
-                        else:
-                            expect('NUMBER')
-                    
-                    # Operador
-                    expect('OPERATOR')
-                    
-                    # Fechamento
-                    expect('PAREN', ')')
-                    stack.pop()
-                else:
-                    i += 1
-            
-            if stack:
-                raise ValueError(f"Parêntese não fechado na posição {stack[-1]['position']}")
-            
-            return True
-        except ValueError as e:
-            raise ValueError(f"Erro sintático: {str(e)}")
+                    else:
+                        i += 1
+                
+                if stack:
+                    raise ValueError(f"Parêntese não fechado na posição {stack[-1]['position']}")
+                
+                return True
+            except ValueError as e:
+                raise ValueError(f"Erro sintático: {str(e)}")
             
 def main():
     """
