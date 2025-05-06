@@ -87,23 +87,28 @@ class RPNCalculator:
             Resultado da avaliação da expressão
         """
         try:
+            tokens = self.lexical_analyzer(expression.strip())
+
+            self.syntactic_analyzer(tokens)
+
             res_match = re.match(r'^\(\s*(\d+)\s+RES\s*\)$', expression.strip())
             if res_match:
                 n = int(res_match.group(1))
                 if n < len(self.results):
                     return self.convertFloatToHalf(self.results[-(n+1)])
                 else:
-                    raise ValueError(f"Erro: Não já {n} resultados anteriores.")
-            
+                    raise ValueError(f"Erro: Não há {n} resultados anteriores.")
+                
             mem_store_match = re.match(r'^\(\s*([0-9.+-]+)\s+MEM\s*\)$', expression.strip())
             if mem_store_match:
-                value = float(mem_store_match(1))
-                self.memory = self.convertFloatToHalf(self.memory)
+                value = float(mem_store_match.group(1))
+                self.memory = self.convertFloatToHalf(value)
+                return self.memory
             
             return self.evaluate_tokens(self.tokenize_expression(expression))
         except Exception as e:
             print(f"Erro ao avaliar expressão '{expression}': {str(e)}")
-
+            return None
     
     def evaluate_tokens(self, tokens):
         """
@@ -218,6 +223,20 @@ class RPNCalculator:
         # Usa expressões regulares para dividir a expressão em tokens
         return re.findall(r'\d+\.\d+|\d+|[()+\-*/^%|]', expression)
     
+    def process_input(self, path):
+        """
+            Faz o processamento dos arquivos individuais qunato o diretorio
+        """
+        if os.path.isfile(path):
+            if path.endswith('.txt'):
+                self.process_file(path)
+            else:
+                print(f"Erro: '{path}' não é um arquivo .txt")
+        elif os.path.isdir(path):
+            self.process_File(path)  # método original para diretórios
+        else:
+            print(f"Erro: '{path}' não encontrado ou não é válido")
+    
     def process_File(self, filename):
         """
             Processa um arquivo contendo expressões RPN (uma por linha).
@@ -229,32 +248,18 @@ class RPNCalculator:
             Retorna:
                 Lista com os resultados de cada expressão no arquivo
         """
-        try:
-            results = []
-            for file in os.listdir(filename):
-                filepath = os.path.join(filename, file)
-                # Verifica se é um arquivo e termina com .txt
-                if os.path.isfile(filepath) and file.endswith('.txt'):
-                    print(f"---- Arquivo: {file} ---------\n")
-                    with open(filepath, 'r') as f:
-                        lines = f.readlines()
-                        
-                        for i, line in enumerate(lines):
-                            line = line.strip()
-                            if line:
-                                print(f"Expressão: {line}")
-                                result = self.evaluate_expression(line)
-                                self.results.append(result)
-                                results.append(result)
-                                print(f"Resultado: {result}")
-                                print()
-            return results
-        except FileNotFoundError:
-            print(f"Erro: Diretório '{filename}' não encontrado.")
-            return []
-        except Exception as e:
-            print(f"Erro ao processar diretório: {str(e)}")
-            return []
+        print(f"---- Arquivo: {os.path.basename(filename)} ----\n")
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+            
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if line:
+                    print(f"Expressão {i+1}: {line}")
+                    result = self.evaluate_expression(line)
+                    if result is not None:
+                        self.results.append(result)
+                        print(f"Resultado: {result}\n")
         
     def generate_arduino_assembly(self, filename, output_filename="arduino_code.asm"):
         """
@@ -358,7 +363,158 @@ class RPNCalculator:
         except Exception as e:
             print(f"Erro ao gerar código Assembly: {str(e)}")
             return False
+    
+    def lexical_analyzer(self, expression):
+        """
+            Analisador Léxico - Transforma a expressão em tokens com informações adicionais
+            Retorna uma lista de dicionários contendo:
+            - 'value': valor do token
+            - 'type': tipo do token (NUMBER, OPERATOR, PAREN, COMMAND)
+            - 'position': posição inicial na expressão
+        """
+        tokens = []
+        i = 0
+        n = len(expression)
         
+        while i < n:
+            if expression[i].isspace():
+                i += 1
+                continue
+                
+            # Verifica parênteses
+            if expression[i] in '()':
+                tokens.append({
+                    'value': expression[i],
+                    'type': 'PAREN',
+                    'position': i
+                })
+                i += 1
+                continue
+                
+            # Verifica operadores
+            if expression[i] in '+-*/%|^':
+                tokens.append({
+                    'value': expression[i],
+                    'type': 'OPERATOR',
+                    'position': i
+                })
+                i += 1
+                continue
+                
+            # Verifica números (inteiros e decimais)
+            if expression[i].isdigit() or expression[i] == '.':
+                start = i
+                has_decimal = False
+                while i < n:
+                    if expression[i].isdigit():
+                        i += 1
+                    elif expression[i] == '.' and not has_decimal:
+                        has_decimal = True
+                        i += 1
+                    else:
+                        break
+                
+                # Verifica se o token é válido (não termina com ponto)
+                if expression[i-1] == '.':
+                    raise ValueError(f"Número inválido na posição {start}")
+                
+                tokens.append({
+                    'value': expression[start:i],
+                    'type': 'NUMBER',
+                    'position': start
+                })
+                continue
+                
+            # Verifica comandos (RES, MEM)
+            if expression[i].isalpha():
+                start = i
+                while i < n and expression[i].isalpha():
+                    i += 1
+                token_value = expression[start:i].upper()
+                
+                if token_value in ('RES', 'MEM'):
+                    tokens.append({
+                        'value': token_value,
+                        'type': 'COMMAND',
+                        'position': start
+                    })
+                else:
+                    raise ValueError(f"Comando desconhecido '{token_value}' na posição {start}")
+                continue
+                
+            raise ValueError(f"Caractere inválido '{expression[i]}' na posição {i}")
+            
+        return tokens
+    
+    def syntactic_analyzer(self, tokens):
+        """
+            Verifica se a estrutura dos tokéns é válida
+            Retorna True se a sintaxe estiver correta, False caso contrário
+        """
+        stack = []
+        i = 0
+        n = len(tokens)
+        
+        def expect(token_type=None, token_value=None):
+            nonlocal i
+            if i >= n:
+                raise ValueError("Fim inesperado da expressão")
+            if token_type and tokens[i]['type'] != token_type:
+                raise ValueError(f"Esperado {token_type}, encontrado {tokens[i]['type']} na posição {tokens[i]['position']}")
+            if token_value and tokens[i]['value'] != token_value:
+                raise ValueError(f"Esperado '{token_value}', encontrado '{tokens[i]['value']}' na posição {tokens[i]['position']}")
+            i += 1
+        
+        try:
+            while i < n:
+                if tokens[i]['value'] == '(':
+                    stack.append(tokens[i])
+                    expect('PAREN', '(')
+                    
+                    # Verifica se é um comando especial
+                    if i + 2 < n and tokens[i]['type'] == 'NUMBER' and tokens[i+1]['type'] == 'COMMAND':
+                        expect('NUMBER')
+                        expect('COMMAND')
+                        expect('PAREN', ')')
+                        stack.pop()
+                        continue
+                    elif i + 1 < n and tokens[i]['type'] == 'COMMAND' and tokens[i]['value'] == 'MEM':
+                        expect('COMMAND', 'MEM')
+                        expect('PAREN', ')')
+                        stack.pop()
+                        continue
+                    
+                    # Caso contrário, deve ser uma expressão normal
+                    # Primeiro operando (pode ser número ou subexpressão)
+                    if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
+                        if tokens[i]['value'] == '(':
+                            self.syntactic_analyzer(tokens[i:])
+                        else:
+                            expect('NUMBER')
+                    
+                    # Segundo operando
+                    if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
+                        if tokens[i]['value'] == '(':
+                            self.syntactic_analyzer(tokens[i:])
+                        else:
+                            expect('NUMBER')
+                    
+                    # Operador
+                    expect('OPERATOR')
+                    
+                    # Fechamento
+                    expect('PAREN', ')')
+                    stack.pop()
+                else:
+                    i += 1
+            
+            if stack:
+                raise ValueError(f"Parêntese não fechado na posição {stack[-1]['position']}")
+            
+            return True
+        except ValueError as e:
+            raise ValueError(f"Erro sintático: {str(e)}")
+            
 def main():
     """
         Função principal que coordena a execução do programa.
@@ -368,12 +524,11 @@ def main():
     calculator = RPNCalculator()
 
     if len(sys.argv) > 1:
-        folder = sys.argv[1]
-        calculator.process_File(folder)
+        path = sys.argv[1]
+        calculator.process_File(path)
     else:
          print("Uso: python3 main.py <arquivo_de_entrada>")
 
 # Exemplo de uso:
 if __name__ == "__main__":
     main()
-
