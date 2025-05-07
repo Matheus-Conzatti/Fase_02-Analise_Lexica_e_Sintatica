@@ -81,8 +81,12 @@ def dfa_lex(input_str):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Uso: python dfa_simulator.py '<string>'")
+        print("Usage: python dfa_simulator.py '<string>'")
         sys.exit(1)
     input_str = sys.argv[1]
     tokens = dfa_lex(input_str)
-    print('Tokens:', tokens)
+    # Print as table
+    print(f"{'Value':<10} | {'Type':<10} | {'Position':<8}")
+    print('-'*34)
+    for t in tokens:
+        print(f"{t['value']:<10} | {t['type']:<10} | {t['position']:<8}")
