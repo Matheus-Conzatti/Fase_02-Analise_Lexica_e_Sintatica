@@ -6,31 +6,30 @@ import os
 
 class RPNCalculator:
     """
-    Implementa uma calculadora para avaliação de expressões na Notação Polonesa Reversa (RPN).
-    Suporta operações aritméticas básicas, comandos especiais de memória, e expressões aninhadas.
+    Implements a calculator for evaluating expressions in Reverse Polish Notation (RPN).
+    Supports basic arithmetic operations, special memory commands, and nested expressions.
     """
     
     def __init__(self):
         """
-        Inicializa a calculadora RPN com valores padrão.
-        Configura a lista de resultados anteriores e a memória.
+        Initializes the RPN calculator with default values.
+        Sets up the list of previous results and memory.
         """
-        # Armazena resultados das expressões anteriores
+        # Stores previous results of expressions
         self.results = []
-        # Memória para comando (V MEM)
+        # Memory for (V MEM) command
         self.memory = 0.0
     
     def convertFloatToHalf(self, f):
         """
-        Converte um número para formato de meia precisão (16 bits) conforme padrão IEEE754.
+        Converts a number to half-precision (16 bits) according to IEEE754 standard.
         
-        Parâmetros:
-            value: Valor float a ser convertido
-            
-        Retorna:
-            Valor convertido para representação de meia precisão (16 bits)
+        Parameters:
+            value: Float value to be converted
+        Returns:
+            Value converted to half-precision (16 bits) representation
         """
-        # Converte o float para bits (uint32)
+        # Converts float to bits (uint32)
         bin_f = struct.unpack('>I', struct.pack('>f', f))[0]
 
         sinal = (bin_f >> 16) & 0x8000
@@ -38,20 +37,19 @@ class RPNCalculator:
         mantissa = (bin_f >> 13) & 0x03FF
 
         if exp <= 0:
-            return sinal # Subnormal ou zero
+            return sinal # Subnormal or zero
         elif exp >= 31:
-            return sinal | 0x7C00 # Infinito ou NaN
+            return sinal | 0x7C00 # Infinity or NaN
         return sinal | (exp << 10) | mantissa
     
     def convertHalfToFloat(self, f16):
         """
-        Converte um número de meia precisão (16 bits) para float conforme padrão IEEE754.
+        Converts a half-precision (16 bits) number to float according to IEEE754 standard.
         
-        Parâmetros:
-            f16: Valor em meia precisão (16 bits) a ser convertido
-            
-        Retorna:
-            Valor convertido para float
+        Parameters:
+            f16: Value in half-precision (16 bits) to be converted
+        Returns:
+            Value converted to float
         """
         sinal = (f16 >> 15) & 0x1
         exp = (f16 >> 10) & 0x1F
@@ -108,7 +106,7 @@ class RPNCalculator:
                 if n < len(self.results):
                     return self.convertFloatToHalf(self.results[-(n+1)])
                 else:
-                    raise ValueError(f"Erro: Não há {n} resultados anteriores.")
+                    raise ValueError(f"Error: There are not {n} previous results.")
                 
             mem_store_match = re.match(r'^\(\s*([0-9.+-]+)\s+MEM\s*\)$', expression.strip())
             if mem_store_match:
@@ -118,7 +116,7 @@ class RPNCalculator:
             
             return self.evaluate_tokens(self.tokenize_expression(expression))
         except Exception as e:
-            print(f"Erro ao avaliar expressão '{expression}': {str(e)}")
+            print(f"Error evaluating expression '{expression}': {str(e)}")
             return None
     
     def evaluate_tokens(self, tokens):
@@ -190,15 +188,14 @@ class RPNCalculator:
 
     def operate(self, a, b, operator):
         """
-        Realiza a operação matemática entre dois operandos a e b com o operador fornecido.
+        Performs the mathematical operation between two operands a and b with the given operator.
         
-        Parâmetros:
-            a: Primeiro operando (float)
-            b: Segundo operando (float)
-            operator: Operador (string)
-            
-        Retorna:
-            Resultado da operação
+        Parameters:
+            a: First operand (float)
+            b: Second operand (float)
+            operator: Operator (string)
+        Returns:
+            Result of the operation
         """
         if operator == '+':
             return a + b
@@ -217,66 +214,70 @@ class RPNCalculator:
         elif operator == '|':
             return max(a, b)
         else:
-            raise ValueError(f"Erro: Operador '{operator}' inválido.")
+            raise ValueError(f"Error: Invalid operator '{operator}'")
     
     def tokenize_expression(self, expression):
         """
-        Tokeniza a expressão RPN, dividindo-a em seus componentes (operadores, operandos, comandos especiais).
+        Tokenizes the RPN expression, splitting it into its components (operators, operands, special commands).
         
-        Parâmetros:
-            expression: Expressão RPN em formato de string
-            
-        Retorna:
-            Lista de tokens
+        Parameters:
+            expression: RPN expression as a string
+        Returns:
+            List of tokens
         """
-        # Limpeza da expressão
+        # Clean up the expression
         expression = expression.strip()
-        # Usa expressões regulares para dividir a expressão em tokens
-        return re.findall(r'\d+\.\d+|\d+|[()+\-*/^%|]', expression)
+        # Use regular expressions to split the expression into tokens (now including keywords)
+        return re.findall(r'\d+\.\d+|\d+|[()+\-*/^%|]|[A-Z]+', expression, flags=re.IGNORECASE)
     
     def process_input(self, path):
         """
-            Faz o processamento dos arquivos individuais qunato o diretorio
+            Processes individual files or directories.
         """
         if os.path.isfile(path):
             if path.endswith('.txt'):
                 self.process_file(path)
             else:
-                print(f"Erro: '{path}' não é um arquivo .txt")
+                print(f"Error: '{path}' is not a .txt file")
         elif os.path.isdir(path):
-            self.process_File(path)  # método original para diretórios
+            self.process_File(path)  # original method for directories
         else:
-            print(f"Erro: '{path}' não encontrado ou não é válido")
+            print(f"Error: '{path}' not found or is not valid")
     
     def process_File(self, filename):
         """
-            Processa um arquivo contendo expressões RPN (uma por linha).
-            Avalia cada expressão e armazena o resultado.
+            Processes a file containing RPN expressions (one per line).
+            Evaluates each expression and stores the result.
             
-            Parâmetros:
-                filename: Caminho do arquivo a ser processado
-                
-            Retorna:
-                Lista com os resultados de cada expressão no arquivo
+            Parameters:
+                filename: Path to the file to be processed
+            Returns:
+                List with the results of each expression in the file
         """
-        print(f"---- Arquivo: {os.path.basename(filename)} ----\n")
+        print(f"---- File: {os.path.basename(filename)} ----\n")
         with open(filename, 'r') as f:
             lines = f.readlines()
             
             for i, line in enumerate(lines):
                 line = line.strip()
                 if line:
-                    print(f"Expressão {i+1}: {line}")
+                    print(f"Expression {i+1}: {line}")
+                    # Show token string
+                    tok_list = self.lexical_analyzer(line)
+                    token_str = ' '.join([f"< {t['value']}, {t['type']}, {t['position']} >" for t in tok_list])
+                    print(f"Tokens: {token_str}")
                     result = self.evaluate_expression(line)
                     if result is not None:
                         self.results.append(result)
-                        print(f"Resultado: {result}\n")
+                        print(f"Result: {result}\n")
     
     def lexical_analyzer(self, expression):
         """
-            Analisador Léxico - Transforma a expressão em tokens com informações adicionais
-            Retorna uma lista de dicionários contendo:
-            - 'value': valor do token
+            Lexical Analyzer - Transforms the expression into tokens with additional information
+            Returns a list of dictionaries containing:
+            - 'value': token value
+            - 'type': token type (NUMBER, OPERATOR, PAREN, COMMAND)
+            - 'position': initial position in the expression
             - 'type': tipo do token (NUMBER, OPERATOR, PAREN, COMMAND)
             - 'position': posição inicial na expressão
         """
