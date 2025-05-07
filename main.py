@@ -82,18 +82,17 @@ class RPNCalculator:
 
     def evaluate_expression(self, expression):
         """
-        Avalia uma expressão RPN e retorna o resultado final.
-        Suporta comandos especiais como (N RES), (V MEM) e (MEM).
+        Evaluates an RPN expression and returns the final result.
+        Supports special commands such as (N RES), (V MEM), and (MEM).
         
-        - Se você escrever (2 RES), ele vai buscar o resultado que calculou 2 linhas atrás
-        - Se você escrever (5 MEM), ele vai guardar o número 5 na memória da calculadora
-        - Se você escrever (MEM), ele vai pegar de volta o número que estava guardado na memória
+        - If you write (2 RES), it will retrieve the result calculated 2 lines ago
+        - If you write (5 MEM), it will store the number 5 in the calculator's memory
+        - If you write (MEM), it will retrieve the number stored in memory
         
-        Parâmetros:
-            expression: String contendo a expressão RPN a ser avaliada
-            
-        Retorna:
-            Resultado da avaliação da expressão
+        Parameters:
+            expression: String containing the RPN expression to be evaluated
+        Returns:
+            Result of the expression evaluation
         """
         try:
             tokens = self.lexical_analyzer(expression.strip())
@@ -121,15 +120,14 @@ class RPNCalculator:
     
     def evaluate_tokens(self, tokens):
         """
-        Avalia uma lista de tokens em notação RPN e retorna o resultado.
-        Lida com a lógica de processamento de expressões, pilha de operandos,
-        e tratamento de sub-expressões aninhadas.
+        Evaluates a list of tokens in RPN notation and returns the result.
+        Handles the logic for processing expressions, operand stack, and nested sub-expressions.
         
-        Parâmetros:
-            tokens: Lista de tokens (operandos, operadores e parênteses)
+        Parameters:
+            tokens: List of tokens (operands, operators, and parentheses)
             
-        Retorna:
-            Resultado da avaliação dos tokens
+        Returns:
+            Result of the token evaluation
         """
         stack = []
         i = 0
@@ -145,7 +143,7 @@ class RPNCalculator:
                         count -= 1
                     j += 1
                 if count != 0:
-                    raise ValueError("Erro: Parênteses não balanceados.")
+                    raise ValueError("Error: Parenthesis mismatch.")
                 subexpr = tokens[i+1:j-1]
 
                 if len(subexpr) == 2 and subexpr[1] == 'RES':
@@ -153,7 +151,7 @@ class RPNCalculator:
                     if n < len(self.results):
                         stack.append(self.results[-(n+1)])
                     else:
-                        raise ValueError(f"Erro: Não há {n} resultados anteriores.")
+                        raise ValueError(f"Error: There are not {n} previous results.")
                 elif len(subexpr) == 2 and subexpr[1] == 'MEM':
                     value = float(subexpr[0])
                     self.memory = self.convertFloatToHalf(value)
@@ -168,7 +166,7 @@ class RPNCalculator:
                 i += 1
             elif token in ['+', '-', '*', '|', '/', '%', '^']:
                 if len(stack) < 2:
-                    raise ValueError(f"Erro: Operador {token} requer dois operandos.")
+                    raise ValueError(f"Error: Operator {token} requires two operands.")
                 b = self.convertHalfToFloat(stack.pop())
                 a = self.convertHalfToFloat(stack.pop())
                 result = self.operate(a, b, token)
@@ -179,11 +177,11 @@ class RPNCalculator:
                     num = float(token)
                     stack.append(self.convertFloatToHalf(num))
                 except ValueError:
-                    raise(f"Erro: Token 'token' não é válido.")
+                    raise(f"Error: Token '{token}' is not valid.")
                 i += 1
             
         if len(stack) != 1:
-            raise ValueError(f"Erro: A pilha tem {len(stack)} elementos após a avaliação.")
+            raise ValueError(f"Error: The stack has {len(stack)} elements after evaluation.")
         return self.convertHalfToFloat(stack.pop())
 
     def operate(self, a, b, operator):
@@ -205,7 +203,7 @@ class RPNCalculator:
             return a * b
         elif operator == '/':
             if b == 0:
-                raise ValueError("Erro: Divisão por zero.")
+                raise ValueError("Error: Division by zero.")
             return a / b
         elif operator == '%':
             return a % b
@@ -277,9 +275,7 @@ class RPNCalculator:
             Returns a list of dictionaries containing:
             - 'value': token value
             - 'type': token type (NUMBER, OPERATOR, PAREN, COMMAND)
-            - 'position': initial position in the expression
-            - 'type': tipo do token (NUMBER, OPERATOR, PAREN, COMMAND)
-            - 'position': posição inicial na expressão
+            - 'position': initial position within the expression
         """
         tokens = []
         i = 0
@@ -290,19 +286,19 @@ class RPNCalculator:
                 i += 1
                 continue
                 
-            # Verifica parênteses
+            # Check for parentheses
             if expression[i] in '()':
                 tokens.append({'value': expression[i], 'type': 'PAREN', 'position': i})
                 i += 1
                 continue
                 
-            # Verifica operadores
+            # Check for operators
             if expression[i] in '+-*/%|^':
                 tokens.append({'value': expression[i], 'type': 'OPERATOR', 'position': i})
                 i += 1
                 continue
                 
-            # Verifica números (inteiros e decimais)
+            # Check for numbers (integers and decimals)
             if expression[i].isdigit() or expression[i] == '.':
                 start = i
                 has_decimal = False
@@ -315,14 +311,14 @@ class RPNCalculator:
                     else:
                         break
                 
-                # Verifica se o token é válido (não termina com ponto)
+                # Check if the token is valid (does not end with a dot)
                 if expression[i-1] == '.':
-                    raise ValueError(f"Número inválido na posição {start}")
+                    raise ValueError(f"Invalid number at position {start}")
                 
                 tokens.append({'value': expression[start:i],'type': 'NUMBER','position': start})
                 continue
                 
-            # Verifica comandos (RES, MEM)
+            # Check for commands (RES, MEM)
             if expression[i].isalpha():
                 start = i
                 while i < n and expression[i].isalpha():
@@ -332,15 +328,15 @@ class RPNCalculator:
                 if token_value in ('RES', 'MEM'):
                     tokens.append({'value': token_value,'type': 'COMMAND','position': start})
                 else:
-                    raise ValueError(f"Comando desconhecido '{token_value}' na posição {start}")
+                    raise ValueError(f"Unknown command '{token_value}' at position {start}")
                 continue
-            raise ValueError(f"Caractere inválido '{expression[i]}' na posição {i}") 
+            raise ValueError(f"Invalid character '{expression[i]}' at position {i}") 
         return tokens
     
     def syntactic_analyzer(self, tokens):
         """
-            Verifica se a estrutura dos tokéns é válida
-            Retorna True se a sintaxe estiver correta, False caso contrário
+            Checks whether the token structure is valid.
+            Returns True if the syntax is correct, False otherwise.
         """
         stack = []
         i = 0
@@ -349,11 +345,11 @@ class RPNCalculator:
         def expect(token_type=None, token_value=None):
             nonlocal i
             if i >= n:
-                raise ValueError("Fim inesperado da expressão")
+                raise ValueError("Unexpected end of expression")
             if token_type and tokens[i]['type'] != token_type:
-                raise ValueError(f"Esperado {token_type}, encontrado {tokens[i]['type']} na posição {tokens[i]['position']}")
+                raise ValueError(f"Expected {token_type}, found {tokens[i]['type']} at position {tokens[i]['position']}")
             if token_value and tokens[i]['value'] != token_value:
-                raise ValueError(f"Esperado '{token_value}', encontrado '{tokens[i]['value']}' na posição {tokens[i]['position']}")
+                raise ValueError(f"Expected '{token_value}', found '{tokens[i]['value']}' at position {tokens[i]['position']}")
             i += 1
         
             try:
@@ -362,7 +358,7 @@ class RPNCalculator:
                         stack.append(tokens[i])
                         expect('PAREN', '(')
                         
-                        # Verifica se é um comando especial
+                        # Check if it's a special command
                         if i + 2 < n and tokens[i]['type'] == 'NUMBER' and tokens[i+1]['type'] == 'COMMAND':
                             expect('NUMBER')
                             expect('COMMAND')
@@ -375,42 +371,42 @@ class RPNCalculator:
                             stack.pop()
                             continue
                         
-                        # Caso contrário, deve ser uma expressão normal
-                        # Primeiro operando (pode ser número ou subexpressão)
+                        # Otherwise, it's a normal expression
+                        # First operand (can be number or subexpression)
                         if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
                             if tokens[i]['value'] == '(':
                                 self.syntactic_analyzer(tokens[i:])
                             else:
                                 expect('NUMBER')
                         
-                        # Segundo operando
+                        # Second operand
                         if i < n and tokens[i]['type'] in ('NUMBER', 'PAREN'):
                             if tokens[i]['value'] == '(':
                                 self.syntactic_analyzer(tokens[i:])
                             else:
                                 expect('NUMBER')
                         
-                        # Operador
+                        # Operator
                         expect('OPERATOR')
                         
-                        # Fechamento
+                        # Closing
                         expect('PAREN', ')')
                         stack.pop()
                     else:
                         i += 1
                 
                 if stack:
-                    raise ValueError(f"Parêntese não fechado na posição {stack[-1]['position']}")
+                    raise ValueError(f"Unclosed parenthesis at position {stack[-1]['position']}")
                 
                 return True
             except ValueError as e:
-                raise ValueError(f"Erro sintático: {str(e)}")
+                raise ValueError(f"Syntax error: {str(e)}")
             
 def main():
     """
-        Função principal que coordena a execução do programa.
-        Processa o arquivo de entrada especificado como argumento de linha de comando,
-        avalia as expressões e gera o código Assembly para Arduino.
+        Main function that coordinates program execution.
+        Processes the input file specified as a command-line argument,
+        evaluates the expressions, and generates the corresponding output.
     """
     calculator = RPNCalculator()
 
@@ -418,8 +414,8 @@ def main():
         path = sys.argv[1]
         calculator.process_File(path)
     else:
-         print("Uso: python3 main.py <arquivo_de_entrada>")
+         print("Usage: python3 main.py <input_file>")
 
-# Exemplo de uso:
+# Example usage:
 if __name__ == "__main__":
     main()
