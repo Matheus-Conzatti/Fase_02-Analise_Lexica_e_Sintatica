@@ -44,10 +44,21 @@ class RPNCalculator:
         return sinal | (exp << 10) | mantissa
     
     def convertHalfToFloat(self, f16):
+        """
+        Converte um número de meia precisão (16 bits) para float conforme padrão IEEE754.
+        
+        Parâmetros:
+            f16: Valor em meia precisão (16 bits) a ser convertido
+            
+        Retorna:
+            Valor convertido para float
+        """
         sinal = (f16 >> 15) & 0x1
         exp = (f16 >> 10) & 0x1F
         frac = f16 & 0x03FF
         f32Sinal = sinal << 31
+        f32Exp = 0
+        f32Frac = 0
 
         if exp == 0:
             if frac == 0:
@@ -260,109 +271,6 @@ class RPNCalculator:
                     if result is not None:
                         self.results.append(result)
                         print(f"Resultado: {result}\n")
-        
-    def generate_arduino_assembly(self, filename, output_filename="arduino_code.asm"):
-        """
-        Gera código Assembly para Arduino a partir do arquivo de expressões RPN.
-        Cria um esqueleto básico do código Assembly que implementa as operações.
-        
-        Parâmetros:
-            filename: Caminho do arquivo de entrada com expressões RPN
-            output_filename: Caminho do arquivo de saída para o código Assembly
-            
-        Retorna:
-            Booleano indicando sucesso ou falha na geração do código
-        """
-        try:
-            with open(filename, 'r') as file:
-                lines = file.readlines()
-            
-            assembly_code = []
-            assembly_code.append("; Código Assembly gerado para Arduino UNO")
-            assembly_code.append("; Este código implementa as expressões RPN do arquivo de entrada")
-            assembly_code.append("")
-            assembly_code.append(".include \"m328pdef.inc\"")
-            assembly_code.append("")
-            assembly_code.append("; Inicialização")
-            assembly_code.append("setup:")
-            assembly_code.append("    ; Configuração inicial do Arduino")
-            assembly_code.append("    ; Seria implementado o código para inicializar registradores, etc.")
-            assembly_code.append("")
-            
-            # Espaço para memória
-            assembly_code.append("; Memória para comando (MEM)")
-            assembly_code.append("    .dseg")
-            assembly_code.append("memory: .byte 2    ; 2 bytes para half-precision float")
-            assembly_code.append("results: .byte 20   ; Espaço para armazenar 10 resultados (2 bytes cada)")
-            assembly_code.append("    .cseg")
-            assembly_code.append("")
-            
-            # Loop principal para implementar as expressões
-            assembly_code.append("main:")
-            assembly_code.append("    ; Código principal")
-            
-            # Implementação das expressões
-            for i, line in enumerate(lines):
-                line = line.strip()
-                if not line:
-                    continue
-                
-                assembly_code.append(f"    ; Expressão da linha {i+1}: {line}")
-                assembly_code.append(f"expression_{i+1}:")
-                
-                # Implementação básica para gerar código assembly
-                # Na prática, este seria um compilador mais complexo
-                if "+" in line:
-                    assembly_code.append("    ; Operação de adição")
-                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
-                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    add r16, r17  ; Soma")
-                    assembly_code.append("    st X+, r16    ; Armazena resultado")
-                elif "-" in line:
-                    assembly_code.append("    ; Operação de subtração")
-                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
-                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    sub r16, r17  ; Subtrai")
-                    assembly_code.append("    st X+, r16    ; Armazena resultado")
-                elif "*" in line:
-                    assembly_code.append("    ; Operação de Multiplicação")
-                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
-                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    mult r16, r17  ; Mult")
-                    assembly_code.append("    st X+, r16    ; Armazena resultado")
-                elif "/" in line:
-                    assembly_code.append("    ; Operação de Divisão")
-                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
-                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    div r16, r17  ; div")
-                    assembly_code.append("    st X+, r16    ; Armazena resultado")
-                elif "^" in line:
-                    assembly_code.append("    ; Operação de Pontência")
-                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
-                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    pow r16, r17  ; pow")
-                    assembly_code.append("    st X+, r16    ; Armazena resultado")
-                elif "%" in line:
-                    assembly_code.append("    ; Operação de Resto da Divisão")
-                    assembly_code.append("    ld r16, X+    ; Carrega primeiro operando")
-                    assembly_code.append("    ld r17, X+    ; Carrega segundo operando")
-                    assembly_code.append("    mod r16, r17  ; mod")
-                    assembly_code.append("    st X+, r16    ; Armazena resultado")
-                
-            # Fim do programa
-            assembly_code.append("")
-            assembly_code.append("end:")
-            assembly_code.append("    rjmp end    ; Loop infinito")
-            
-            # Escreve o código assembly no arquivo de saída
-            with open(output_filename, 'w') as out_file:
-                out_file.write('\n'.join(assembly_code))
-            
-            print(f"Código Assembly gerado e salvo em '{output_filename}'.")
-            return True
-        except Exception as e:
-            print(f"Erro ao gerar código Assembly: {str(e)}")
-            return False
     
     def lexical_analyzer(self, expression):
         """
