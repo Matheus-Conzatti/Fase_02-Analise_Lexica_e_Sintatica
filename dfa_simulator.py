@@ -79,6 +79,8 @@ def dfa_lex(input_str):
         tokens.append({'value': buf, 'type': 'IDENT', 'position': pos})
     return tokens
 
+from main import RPNCalculator
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python dfa_simulator.py '<string>'")
@@ -90,3 +92,10 @@ if __name__ == "__main__":
     print('-'*34)
     for t in tokens:
         print(f"{t['value']:<10} | {t['type']:<10} | {t['position']:<8}")
+    # Evaluate using main RPNCalculator
+    calc = RPNCalculator()
+    try:
+        result = calc.evaluate_expression(input_str)
+        print(f"\nResult: {result}")
+    except Exception as e:
+        print(f"\nError evaluating expression: {e}")
