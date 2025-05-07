@@ -177,7 +177,7 @@ class RPNCalculator:
                     num = float(token)
                     stack.append(self.convertFloatToHalf(num))
                 except ValueError:
-                    raise(f"Error: Token '{token}' is not valid.")
+                    raise ValueError(f"Error: Token '{token}' is not valid.")
                 i += 1
             
         if len(stack) != 1:
@@ -234,11 +234,15 @@ class RPNCalculator:
         """
         if os.path.isfile(path):
             if path.endswith('.txt'):
-                self.process_file(path)
+                self.process_File(path)
             else:
                 print(f"Error: '{path}' is not a .txt file")
         elif os.path.isdir(path):
-            self.process_File(path)  # original method for directories
+            # Iterate through .txt files in the directory
+            for fname in os.listdir(path):
+                if fname.endswith('.txt'):
+                    full_path = os.path.join(path, fname)
+                    self.process_File(full_path)
         else:
             print(f"Error: '{path}' not found or is not valid")
     
@@ -412,7 +416,7 @@ def main():
 
     if len(sys.argv) > 1:
         path = sys.argv[1]
-        calculator.process_File(path)
+        calculator.process_input(path)
     else:
          print("Usage: python3 main.py <input_file>")
 
